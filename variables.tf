@@ -169,12 +169,6 @@ variable "managed_by" {
   description = "Team responsible for the cache, used for the ManagedBy tag."
 }
 
-variable "role" {
-  type        = string
-  description = "Role tag describing what this cache is for."
-  default     = "Application cache"
-}
-
 variable "custom_tags" {
   type        = map(string)
   description = "Additional tags merged over the standard set."

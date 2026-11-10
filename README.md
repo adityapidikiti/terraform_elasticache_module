@@ -186,7 +186,6 @@ terraform test -filter=apply.tftest.hcl   # needs AWS credentials
 | maintenance_window | Preferred maintenance window. | `string` | `"sun:07:01-sun:11:00"` | no |
 | multi_az_enabled | Spread nodes across availability zones. | `bool` | `true` | no |
 | port | Port the cache listens on. | `number` | `6379` | no |
-| role | Role tag describing what this cache is for. | `string` | `"Application cache"` | no |
 | snapshot_retention_limit | Days to keep automatic snapshots. Zero disables backups. | `number` | `0` | no |
 | snapshot_window | Daily snapshot window in UTC. | `string` | `"05:00-07:00"` | no |
 | transit_encryption_enabled | Encrypt data in transit. | `bool` | `false` | no |

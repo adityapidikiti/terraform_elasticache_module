@@ -14,7 +14,6 @@ locals {
       App         = var.app
       ManagedBy   = var.managed_by
       Environment = var.environment
-      Role        = var.role
       Provisioner = "Terraform"
     },
     var.custom_tags
