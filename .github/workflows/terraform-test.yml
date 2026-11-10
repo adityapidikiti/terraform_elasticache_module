@@ -1,0 +1,97 @@
+name: terraform-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_apply_tests:
+        description: "Run the live AWS apply tests (creates and deletes real caches)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  TERRAFORM_VERSION: "1.17.1"
+  AWS_REGION: us-east-1
+
+jobs:
+  fmt-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - run: terraform fmt -check -recursive -diff
+
+      - run: terraform init -backend=false -input=false
+
+      - run: terraform validate
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - working-directory: test
+        run: terraform init -backend=false -input=false
+
+      - working-directory: test
+        run: terraform validate
+
+      - working-directory: test
+        run: terraform test -filter=plan.tftest.hcl
+
+      - working-directory: test
+        run: terraform test -filter=validation.tftest.hcl
+
+  # Manual dispatch only. Uses OIDC when the AWS_ROLE_ARN repository variable
+  # is set, otherwise the AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY secrets.
+  apply-tests:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.run_apply_tests
+    environment: aws-test
+    permissions:
+      id-token: write
+      contents: read
+    concurrency:
+      group: terraform-apply-tests
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: vars.AWS_ROLE_ARN != ''
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-session-name: gha-terraform-elasticache-test
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: vars.AWS_ROLE_ARN == ''
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - run: aws sts get-caller-identity
+
+      - working-directory: test
+        run: terraform init -backend=false -input=false
+
+      - working-directory: test
+        run: terraform test -filter=apply.tftest.hcl
